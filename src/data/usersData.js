@@ -1,6 +1,6 @@
-import { User } from '../models/userModel.js';
+import User from '../models/userModel.js';
 
-export const users = [
+const users = [
   new User({
     id: '1',
     username: 'admin',
@@ -16,3 +16,5 @@ export const users = [
     role: 'user'
   })
 ];
+
+export default users
