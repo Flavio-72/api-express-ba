@@ -17,7 +17,7 @@ class UserService {
     }
 
     static async getUserById(id) {
-        const user = users.find(user => user.id === parseInt(id));
+        const user = users.find(user => user.id == id);
         return user ? user.toJSON() : null;
     }
 
