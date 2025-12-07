@@ -1,69 +1,112 @@
 import User from '../models/userModel.js';
 import bcrypt from 'bcryptjs';
-import users from '../data/usersData.js';
+import db from '../config/firebaseConfig.js';
+
+const usersCollection = db.collection('users');
 
 class UserService {
     static async createUser(data) {
         const { username, email, password, role } = data;
         const hashedPassword = await bcrypt.hash(password, 10);
-        const id = users.length + 1;
-        const newUser = new User({ id, username, email, password: hashedPassword, role });
-        users.push(newUser);
+        
+        const newUserData = {
+            username,
+            email,
+            password: hashedPassword,
+            role: role || 'user',
+            createdAt: new Date().toISOString()
+        };
+        
+        const docRef = await usersCollection.add(newUserData);
+        const newUser = new User({ id: docRef.id, ...newUserData });
         return newUser.toJSON();
     }
 
     static async getAllUsers() {
-        return users.map(user => user.toJSON());
+        const snapshot = await usersCollection.get();
+        const users = [];
+        snapshot.forEach(doc => {
+            const user = new User({ id: doc.id, ...doc.data() });
+            users.push(user.toJSON());
+        });
+        return users;
     }
 
     static async getUserById(id) {
-        const user = users.find(user => user.id == id);
-        return user ? user.toJSON() : null;
+        const doc = await usersCollection.doc(id).get();
+        if (!doc.exists) return null;
+        
+        const user = new User({ id: doc.id, ...doc.data() });
+        return user.toJSON();
     }
 
     static async getUserByUsername(username) {
-        const user = users.find(user => user.username === username);
-        return user ? user.toJSON() : null;
+        const snapshot = await usersCollection.where('username', '==', username).get();
+        if (snapshot.empty) return null;
+        
+        const doc = snapshot.docs[0];
+        const user = new User({ id: doc.id, ...doc.data() });
+        return user.toJSON();
     }
 
     static async getUserByEmail(email) {
-        const user = users.find(user => user.email === email);
-        return user ? user.toJSON() : null;
+        const snapshot = await usersCollection.where('email', '==', email).get();
+        if (snapshot.empty) return null;
+        
+        const doc = snapshot.docs[0];
+        const user = new User({ id: doc.id, ...doc.data() });
+        return user.toJSON();
     }
 
     static async validateCredentials(email, password) {
-        const user = users.find(user => user.email === email);
-        if (!user) return null;
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        return isPasswordValid ? user.toJSON() : null;
+        const snapshot = await usersCollection.where('email', '==', email).get();
+        if (snapshot.empty) return null;
+        
+        const doc = snapshot.docs[0];
+        const userData = doc.data();
+        
+        const isPasswordValid = await bcrypt.compare(password, userData.password);
+        if (!isPasswordValid) return null;
+        
+        const user = new User({ id: doc.id, ...userData });
+        return user.toJSON();
     }
 
     static async updateUser(id, data) {
-        const userIndex = users.findIndex(user => user.id === parseInt(id));
-        if (userIndex === -1) return null;
+        const docRef = usersCollection.doc(id);
+        const doc = await docRef.get();
+        
+        if (!doc.exists) return null;
 
+        const updateData = {};
         const { username, email, password, role } = data;
-        const currentUser = users[userIndex];
 
-        if (username !== undefined) currentUser.username = username;
-        if (email !== undefined) currentUser.email = email;
-        if (role !== undefined) currentUser.role = role;
+        if (username !== undefined) updateData.username = username;
+        if (email !== undefined) updateData.email = email;
+        if (role !== undefined) updateData.role = role;
         if (password !== undefined) {
-            currentUser.password = await bcrypt.hash(password, 10);
+            updateData.password = await bcrypt.hash(password, 10);
         }
 
-        users[userIndex] = currentUser;
-        return currentUser.toJSON();
+        updateData.updatedAt = new Date().toISOString();
+
+        await docRef.update(updateData);
+        
+        const updatedDoc = await docRef.get();
+        const user = new User({ id: updatedDoc.id, ...updatedDoc.data() });
+        return user.toJSON();
     }
 
     static async deleteUser(id) {
-        const userIndex = users.findIndex(user => user.id === parseInt(id));
-        if (userIndex === -1) return null;
+        const docRef = usersCollection.doc(id);
+        const doc = await docRef.get();
+        
+        if (!doc.exists) return null;
 
-        const deletedUser = users[userIndex];
-        users.splice(userIndex, 1);
-        return deletedUser.toJSON();
+        const user = new User({ id: doc.id, ...doc.data() });
+        await docRef.delete();
+        
+        return user.toJSON();
     }
 }
 

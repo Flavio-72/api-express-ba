@@ -1,2 +1,11 @@
+# Dependencies
 node_modules
+
+# Environment variables (contiene credenciales)
 .env
+.env.local
+
+# Firebase credentials (archivos JSON con credenciales sensibles)
+firebase-service-account.json
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
