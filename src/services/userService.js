@@ -26,6 +26,11 @@ class UserService {
         return user ? user.toJSON() : null;
     }
 
+    static async getUserByEmail(email) {
+        const user = users.find(user => user.email === email);
+        return user ? user.toJSON() : null;
+    }
+
     static async validateCredentials(email, password) {
         const user = users.find(user => user.email === email);
         if (!user) return null;
