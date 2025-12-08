@@ -1,5 +1,6 @@
 import UserService from '../services/userService.js';
 import asyncHandler from '../middlewares/asyncHandler.js';
+import { generateToken } from '../utils/jwtUtils.js';
 
 class UserController {
   static getAllUsers = asyncHandler(async (req, res) => {
@@ -17,8 +18,16 @@ class UserController {
 
   static createUser = asyncHandler(async (req, res) => {
     const newUser = await UserService.createUser(req.body);
-    res.status(201).json(newUser);
-  });
+
+    const token = generateToken(newUser.id, newUser.email, newUser.role);
+    
+    res.status(201).json({ 
+        success: true,
+        message: 'Registro exitoso',
+        token,
+        user: newUser 
+    });
+   });
 
   static updateUser = asyncHandler(async (req, res) => {
     const updatedUser = await UserService.updateUser(req.params.id, req.body);
@@ -41,10 +50,21 @@ class UserController {
     const user = await UserService.validateCredentials(email, password);
     
     if (!user) {
-      return res.status(401).json({ message: 'Credenciales inválidas' });
+      return res.status(401).json({ 
+        success: false,
+        message: 'Credenciales inválidas' 
+      });
     }
 
-    res.json({ message: 'Login exitoso', user });
+    // Generar token JWT
+    const token = generateToken(user.id, user.email, user.role);
+
+    res.json({ 
+      success: true,
+      message: 'Login exitoso',
+      token,
+      user 
+    });
   });
 }
 
